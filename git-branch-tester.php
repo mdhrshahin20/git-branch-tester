@@ -147,6 +147,7 @@ function github_branch_tester_apply_branch() {
 }
 add_action('admin_init', 'github_branch_tester_apply_branch');
 
+
 function github_branch_tester_download_plugin($branch) {
     // Initialize WordPress filesystem API
     if (!function_exists('WP_Filesystem')) {
@@ -186,7 +187,6 @@ function github_branch_tester_download_plugin($branch) {
 
     // Use download_url to handle the download and unzip
     $result = unzip_file($zip_file_path, WP_PLUGIN_DIR);
-
     // Cleanup temporary ZIP file
     if (file_exists($zip_file_path)) {
         unlink($zip_file_path);
@@ -196,6 +196,45 @@ function github_branch_tester_download_plugin($branch) {
         error_log('Unzip error: ' . $result->get_error_message());
         return $result; // Return error if unzipping fails
     }
+    // Run Composer install
+    $repo_dir = explode('/', $repo)[1];
+
+    $plugin_dir = WP_PLUGIN_DIR . '/' . $repo_dir . '-'.$branch; // Adjust this based on the unzipped directory structure
+    $plugin_dir = apply_filters('github_branch_tester_plugin_dir', $plugin_dir, $repo);
+    putenv('COMPOSER_HOME=' . WP_CONTENT_DIR . '/composer');
+    exec("cd $plugin_dir && composer install 2>&1", $output, $return_var);
+    if ($return_var !== 0) {
+        error_log('Composer install error: ' . implode("\n", $output));
+        return new WP_Error('composer_error', 'Error running composer install: ' . implode("\n", $output));
+    }
+
+    // Run npm install
+    exec("cd $plugin_dir && npm install 2>&1", $output, $return_var);
+    if ($return_var !== 0) {
+        error_log('NPM install error: ' . implode("\n", $output));
+        return new WP_Error('npm_error', 'Error running npm install: ' . implode("\n", $output));
+    }
+
+    // Run npm run build
+    exec("cd $plugin_dir && npm run build 2>&1", $output, $return_var);
+    if ($return_var !== 0) {
+        error_log('NPM build error: ' . implode("\n", $output));
+        return new WP_Error('build_error', 'Error running npm run build: ' . implode("\n", $output));
+    }
 
     return true; // Success
+}
+
+function createSlug($branchName) {
+    // Ensure the input is a string
+    if (!is_string($branchName)) {
+        return $branchName;
+    }
+
+    // Replace slashes with hyphens and convert to lowercase
+    $slug = str_replace('/', '-', $branchName);
+
+    // Log the resulting slug for debugging
+
+    return strtolower($slug);
 }
