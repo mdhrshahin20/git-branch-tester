@@ -202,7 +202,7 @@ function github_branch_tester_download_plugin($branch) {
     $plugin_dir = WP_PLUGIN_DIR . '/' . $repo_dir . '-'.$branch; // Adjust this based on the unzipped directory structure
     $plugin_dir = apply_filters('github_branch_tester_plugin_dir', $plugin_dir, $repo);
     putenv('COMPOSER_HOME=' . WP_CONTENT_DIR . '/composer');
-    exec("cd $plugin_dir && composer install 2>&1", $output, $return_var);
+    exec("cd $plugin_dir && composer install --no-dev 2>&1", $output, $return_var);
     if ($return_var !== 0) {
         error_log('Composer install error: ' . implode("\n", $output));
         return new WP_Error('composer_error', 'Error running composer install: ' . implode("\n", $output));
